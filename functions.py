@@ -57,3 +57,12 @@ def plot_distributions(dtf, x, max_cat=20, top=None, y=None, bins=None, figsize=
         ax[1].set(title="density")
         ax[1].grid(True)
     plt.show()
+
+
+'''
+Detect language of text.
+'''
+def add_detect_lang(data, column):
+    dtf = data.copy()
+    dtf['lang'] = dtf[column].apply(lambda x: langdetect.detect(x) if x.strip() != "" else "")
+    return dtf
