@@ -58,11 +58,66 @@ def plot_distributions(dtf, x, max_cat=20, top=None, y=None, bins=None, figsize=
         ax[1].grid(True)
     plt.show()
 
+'''
+Compute different text length metrics.
+:parameter
+    :param dtf: dataframe - dtf with a text column
+    :param column: string - name of column containing text
+:return
+    dtf: input dataframe with 2 new columns
+'''
+
+def add_text_length(data, column):
+    dtf = data.copy()
+    dtf['word_count'] = dtf[column].apply(lambda x: len(nltk.word_tokenize(str(x))))
+    dtf['char_count'] = dtf[column].apply(lambda x: len(word) for word in nltk.word_tokenize(str(x)))
+    dtf['sentence_count'] = dtf[column].apply(lambda x: len(nltk.sent_tokenize(str(x))))
+    dtf['avg_word_length'] = dtf['char_count']/dtf['word_count']
+    dtf['avg_sentence_length'] = dtf['word_count'] / dtf['sentence_count']
+    print(dtf[['char_count','word_count','sentence_count','avg_word_length','avg_sentence_length']].describe().T[['min','mean','max']])
+    return dtf
 
 '''
-Detect language of text.
+Creates a list of stopwords.
+:parameter
+    :param lst_langs: list - ["english", "italian"]
+    :param lst_add_words: list - list of new stopwords to add
+    :param lst_keep_words: list - list words to keep (exclude from stopwords)
+:return
+    stop_words: list of stop words
+''' 
+
+def create_stopwords(lst_langs=['english'], lst_add_words=[], lst_keep_words=[]):
+    lst_stopwords = set()
+    for lang in lst_langs:
+        lst_stopwords = lst_stopwords.union(set(nltk.corpus.stopwords.words(lang)))
+    lst_stopwords = lst_stopwords.union(lst_add_words)
+    lst_stopwords = list(set(lst_stopwords)-set(lst_keep_words))
+    return sorted(list(set(lst_stopwords)))
+
+
 '''
-def add_detect_lang(data, column):
+Adds a column of preprocessed text.
+:parameter
+    :param dtf: dataframe - dtf with a text column
+    :param column: string - name of column containing text
+:return
+    : input dataframe with two new columns
+'''
+
+def add_preprocessed_text(data, column, lst_regex=None, punkt=False, lower=False,slang=False, lst_stopwords=None, stemm=False, lemm=False, remove_na=True):
     dtf = data.copy()
-    dtf['lang'] = dtf[column].apply(lambda x: langdetect.detect(x) if x.strip() != "" else "")
-    return dtf
+
+    ## apply preprocess
+    dtf = dtf[pd.notnull(dtf[column])]
+    dtf[column+'_clean'] = dtf[column].apply(lambda x: utils_preprocess_text(x,lst_regex,punkt,lower,slang,lst_stopwords,stemm,lemm))
+
+    ##residuals
+    dtf['check']=dtf[column+"_clean"].apply(lambda x: len(x))
+    if dtf['check'].min()==0:
+        print("---found NAs---")
+        print(dtf[[column,column+"_clean"]][dtf['check']==0].head())
+        if remove_na is True:
+            dtf = dtf[dtf['check']>0]
+
+    return dtf.drop("check", axis=1)
