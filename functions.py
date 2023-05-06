@@ -121,3 +121,27 @@ def add_preprocessed_text(data, column, lst_regex=None, punkt=False, lower=False
             dtf = dtf[dtf['check']>0]
 
     return dtf.drop("check", axis=1)
+
+
+def word_freq(corpus, ngrams=[1,2,3], top=10, figsize=(10,7)):
+    lst_tokens = nltk.tokenize.word_tokenize(corpus.str.cat(sep=" "))
+    ngrams = [ngrams] if type(ngrams) is int else ngrams
+    
+    ## calculate
+    dtf_freq = pd.DataFrame()
+    for n in ngrams:
+        dic_words_freq = nltk.FreqDist(nltk.ngrams(lst_tokens, n))
+        dtf_n = pd.DataFrame(dic_words_freq.most_common(), columns=["word","freq"])
+        dtf_n["ngrams"] = n
+        dtf_freq = dtf_freq.append(dtf_n)
+    dtf_freq["word"] = dtf_freq["word"].apply(lambda x: " ".join(string for string in x) )
+    dtf_freq = dtf_freq.sort_values(["ngrams","freq"], ascending=[True,False])
+    
+    ## plot
+    fig, ax = plt.subplots(figsize=figsize)
+    sns.barplot(x="freq", y="word", hue="ngrams", dodge=False, ax=ax,
+                data=dtf_freq.groupby('ngrams')["ngrams","freq","word"].head(top))
+    ax.set(xlabel=None, ylabel=None, title="Most frequent words")
+    ax.grid(axis="x")
+    plt.show()
+    return dtf_freq
